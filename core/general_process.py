@@ -39,7 +39,7 @@ async def save_to_pb(url: str, infos: list):
 
 crawler = PlaywrightCrawler(
     # Limit the crawl to max requests. Remove or increase it for crawling all links.
-    # max_requests_per_crawl=1,
+    max_requests_per_crawl=100,
     max_request_retries=2,
     request_handler_timeout=timedelta(minutes=5),
     headless=False if os.environ.get("VERBOSE", "").lower() in ["true", "1"] else True
