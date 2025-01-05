@@ -8,8 +8,8 @@ import json
 import asyncio
 from custom_scraper import custom_scraper_map
 from urllib.parse import urlparse, urljoin
-import hashlib
-from crawlee.playwright_crawler import PlaywrightCrawler, PlaywrightCrawlingContext, PlaywrightPreNavigationContext
+from crawlee import ConcurrencySettings
+from crawlee.crawlers import PlaywrightCrawler, PlaywrightCrawlingContext, PlaywrightPreNavCrawlingContext
 from datetime import datetime, timedelta
 
 
@@ -36,16 +36,22 @@ async def save_to_pb(url: str, infos: list):
             with open(os.path.join(project_dir, f'{timestamp}_cache_infos.json'), 'w', encoding='utf-8') as f:
                 json.dump(info, f, ensure_ascii=False, indent=4)
 
+concurrency_settings = ConcurrencySettings(
+    min_concurrency=5,
+    max_concurrency=20,
+    max_tasks_per_minute=120,
+)
 
 crawler = PlaywrightCrawler(
     # Limit the crawl to max requests. Remove or increase it for crawling all links.
     # max_requests_per_crawl=1,
+    concurrency_settings=concurrency_settings,
     max_request_retries=1,
     request_handler_timeout=timedelta(minutes=5),
 )
 
 @crawler.pre_navigation_hook
-async def log_navigation_url(context: PlaywrightPreNavigationContext) -> None:
+async def log_navigation_url(context: PlaywrightPreNavCrawlingContext) -> None:
     context.log.info(f'Navigating to {context.request.url} ...')
 
 @crawler.router.default_handler
@@ -58,7 +64,7 @@ async def request_handler(context: PlaywrightCrawlingContext) -> None:
 
     context.page.on('dialog', handle_dialog)
     await context.page.wait_for_load_state('networkidle')
-    html = await context.page.inner_html('body')
+    html = await context.page.content()
     context.log.info('successfully finish fetching')
 
     parsed_url = urlparse(context.request.url)
